@@ -1,19 +1,32 @@
-import matplotlib
-matplotlib.use("Agg")
-
-
 import streamlit as st
 import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
+import plotly.express as px
 
 # ---------------------------
 # Configuração da página
 # ---------------------------
 st.set_page_config(
-    page_title="Medical Insurance Dashboard",
+    page_title="Insurance Analytics Dashboard",
+    page_icon="📊",
     layout="wide"
 )
+
+# ---------------------------
+# Estilo customizado (dark)
+# ---------------------------
+st.markdown("""
+<style>
+    .block-container {
+        padding-top: 2rem;
+    }
+    div[data-testid="metric-container"] {
+        background-color: #111827;
+        border-radius: 12px;
+        padding: 20px;
+        border: 1px solid #1f2937;
+    }
+</style>
+""", unsafe_allow_html=True)
 
 # ---------------------------
 # Carregamento dos dados
@@ -26,96 +39,106 @@ def load_data():
 df = load_data()
 
 # ---------------------------
+# Sidebar
+# ---------------------------
+st.sidebar.title("🔎 Filtros")
+
+region = st.sidebar.multiselect(
+    "Região",
+    df["region"].unique(),
+    df["region"].unique()
+)
+
+smoker = st.sidebar.multiselect(
+    "Fumante",
+    df["smoker"].unique(),
+    df["smoker"].unique()
+)
+
+df = df[
+    (df["region"].isin(region)) &
+    (df["smoker"].isin(smoker))
+]
+
+# ---------------------------
 # Título
 # ---------------------------
-st.title("📊 Medical Insurance Cost Dashboard")
-st.markdown("Análise exploratória dos fatores que influenciam o custo de seguro saúde.")
-
-# ---------------------------
-# Sidebar - Filtros
-# ---------------------------
-st.sidebar.header("🔎 Filtros")
-
-selected_region = st.sidebar.multiselect(
-    "Região",
-    options=df["region"].unique(),
-    default=df["region"].unique()
-)
-
-selected_smoker = st.sidebar.multiselect(
-    "Fumante",
-    options=df["smoker"].unique(),
-    default=df["smoker"].unique()
-)
-
-age_range = st.sidebar.slider(
-    "Faixa etária",
-    int(df["age"].min()),
-    int(df["age"].max()),
-    (18, 65)
-)
-
-df_filtered = df[
-    (df["region"].isin(selected_region)) &
-    (df["smoker"].isin(selected_smoker)) &
-    (df["age"].between(age_range[0], age_range[1]))
-]
+st.title("💼 Medical Insurance Analytics")
+st.caption("Dashboard interativo inspirado em layouts SaaS modernos")
 
 # ---------------------------
 # KPIs
 # ---------------------------
 col1, col2, col3, col4 = st.columns(4)
 
-col1.metric("💰 Custo Médio", f"${df_filtered['charges'].mean():,.2f}")
-col2.metric("📈 Custo Máximo", f"${df_filtered['charges'].max():,.2f}")
-col3.metric("👥 Total de Registros", df_filtered.shape[0])
-col4.metric("👶 Média de Filhos", round(df_filtered["children"].mean(), 2))
+col1.metric("💰 Custo Médio", f"${df.charges.mean():,.0f}")
+col2.metric("📈 Custo Máximo", f"${df.charges.max():,.0f}")
+col3.metric("🚬 % Fumantes", f"{(df.smoker.eq('yes').mean()*100):.1f}%")
+col4.metric("👥 Registros", df.shape[0])
 
 st.divider()
 
 # ---------------------------
-# Gráficos
+# Linha principal (inspirado no layout)
+# ---------------------------
+line = px.line(
+    df.sort_values("age"),
+    x="age",
+    y="charges",
+    color="smoker",
+    title="Charges por Idade",
+    template="plotly_dark"
+)
+
+st.plotly_chart(line, use_container_width=True)
+
+# ---------------------------
+# Gráficos inferiores
 # ---------------------------
 col_left, col_right = st.columns(2)
 
 with col_left:
-    st.subheader("🚬 Custo por Fumante")
-    fig, ax = plt.subplots()
-    sns.boxplot(data=df_filtered, x="smoker", y="charges", ax=ax)
-    st.pyplot(fig)
-
-with col_right:
-    st.subheader("⚖️ BMI vs Charges")
-    fig, ax = plt.subplots()
-    sns.scatterplot(
-        data=df_filtered,
+    scatter = px.scatter(
+        df,
         x="bmi",
         y="charges",
-        hue="smoker",
-        ax=ax
+        color="smoker",
+        title="BMI vs Charges",
+        template="plotly_dark"
     )
-    st.pyplot(fig)
+    st.plotly_chart(scatter, use_container_width=True)
 
-st.subheader("🌎 Custo Médio por Região")
-fig, ax = plt.subplots()
-sns.barplot(
-    data=df_filtered,
+with col_right:
+    donut = px.pie(
+        df,
+        names="smoker",
+        hole=0.6,
+        title="Proporção de Fumantes",
+        template="plotly_dark"
+    )
+    st.plotly_chart(donut, use_container_width=True)
+
+# ---------------------------
+# Bar chart por região
+# ---------------------------
+bar = px.bar(
+    df,
     x="region",
     y="charges",
-    ax=ax
+    color="region",
+    title="Custo Médio por Região",
+    template="plotly_dark"
 )
-st.pyplot(fig)
 
-st.divider()
+st.plotly_chart(bar, use_container_width=True)
 
 # ---------------------------
-# Storytelling
+# Insights
 # ---------------------------
-st.subheader("🔍 Principais Insights")
-
+st.subheader("🔍 Insights Principais")
 st.markdown("""
-- Fumantes apresentam custos significativamente maiores de seguro.
-- O aumento do BMI está fortemente associado ao aumento do custo.
+- Fumantes geram custos significativamente mais altos.
+- BMI elevado está fortemente correlacionado ao aumento dos charges.
+- A idade impacta o custo de forma progressiva.
 - A região tem impacto menor quando comparada a hábitos de saúde.
-- Idade influencia progressivamente o valor do seguro.
 """)
