@@ -25,10 +25,6 @@ def load_data():
 
 df = load_data()
 
-# 🔍 Checkpoint visual (debug)
-st.success("Dados carregados com sucesso 🚀")
-st.write(df.head())
-
 # ---------------------------
 # Título
 # ---------------------------
