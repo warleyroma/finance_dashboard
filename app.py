@@ -1,62 +1,17 @@
-import streamlit as st
 import pandas as pd
+import streamlit as st
 import plotly.express as px
+import matplotlib
+matplotlib.use("Agg")
 
 # ---------------------------
-# Configuração da página
+# Configuração inicial
 # ---------------------------
 st.set_page_config(
-    page_title="Insurance Analytics Dashboard",
+    page_title="Insurance Dashboard",
     page_icon="📊",
     layout="wide"
 )
-
-# ---------------------------
-# Sidebar - Tema
-# ---------------------------
-st.sidebar.title("⚙️ Configurações")
-
-theme = st.sidebar.radio(
-    "Tema",
-    ["🌙 Dark", "☀️ Light"],
-    horizontal=True
-)
-
-PLOTLY_THEME = "plotly_dark" if theme == "🌙 Dark" else "plotly_white"
-
-# ---------------------------
-# CSS dinâmico por tema
-# ---------------------------
-if theme == "🌙 Dark":
-    st.markdown("""
-    <style>
-        .stApp {
-            background-color: #0f172a;
-            color: #e5e7eb;
-        }
-        div[data-testid="metric-container"] {
-            background-color: #111827;
-            border-radius: 12px;
-            padding: 20px;
-            border: 1px solid #1f2937;
-        }
-    </style>
-    """, unsafe_allow_html=True)
-else:
-    st.markdown("""
-    <style>
-        .stApp {
-            background-color: #f8fafc;
-            color: #0f172a;
-        }
-        div[data-testid="metric-container"] {
-            background-color: #ffffff;
-            border-radius: 12px;
-            padding: 20px;
-            border: 1px solid #e5e7eb;
-        }
-    </style>
-    """, unsafe_allow_html=True)
 
 # ---------------------------
 # Carregamento dos dados
@@ -69,105 +24,164 @@ def load_data():
 df = load_data()
 
 # ---------------------------
-# Sidebar - Filtros
+# Sidebar - Tema
 # ---------------------------
-st.sidebar.divider()
-st.sidebar.title("🔎 Filtros")
+st.sidebar.title("⚙️ Configurações")
 
-region = st.sidebar.multiselect(
-    "Região",
-    df["region"].unique(),
-    df["region"].unique()
+theme = st.sidebar.radio(
+    "Tema",
+    ["🌙 Dark", "☀️ Light"],
+    horizontal=True
 )
 
-smoker = st.sidebar.multiselect(
-    "Fumante",
-    df["smoker"].unique(),
-    df["smoker"].unique()
-)
-
-df = df[
-    (df["region"].isin(region)) &
-    (df["smoker"].isin(smoker))
-]
+if theme == "🌙 Dark":
+    BG_COLOR = "#0f172a"
+    CARD_COLOR = "#111827"
+    TEXT_COLOR = "#e5e7eb"
+    BORDER_COLOR = "#1f2937"
+    PLOT_BG = "#0f172a"
+else:
+    BG_COLOR = "#f8fafc"
+    CARD_COLOR = "#ffffff"
+    TEXT_COLOR = "#0f172a"
+    BORDER_COLOR = "#e5e7eb"
+    PLOT_BG = "#ffffff"
 
 # ---------------------------
-# Título
+# CSS GLOBAL
 # ---------------------------
-st.title("💼 Medical Insurance Analytics")
-st.caption("Dashboard interativo com alternância de tema (Dark / Light)")
+st.markdown(f"""
+<style>
+    .stApp {{
+        background-color: {BG_COLOR};
+        color: {TEXT_COLOR};
+    }}
+
+    h1, h2, h3, h4, h5, h6, p, span, label {{
+        color: {TEXT_COLOR} !important;
+    }}
+
+    div[data-testid="metric-container"] {{
+        background-color: {CARD_COLOR};
+        border-radius: 16px;
+        padding: 18px;
+        border: 1px solid {BORDER_COLOR};
+        box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+    }}
+
+    section[data-testid="stSidebar"] {{
+        background-color: {CARD_COLOR};
+        border-right: 1px solid {BORDER_COLOR};
+    }}
+</style>
+""", unsafe_allow_html=True)
+
+# ---------------------------
+# Função padrão para gráficos
+# ---------------------------
+def apply_plot_theme(fig):
+    fig.update_layout(
+        paper_bgcolor=PLOT_BG,
+        plot_bgcolor=PLOT_BG,
+        font=dict(color=TEXT_COLOR),
+        title_font=dict(size=18),
+        legend=dict(
+            bgcolor=PLOT_BG,
+            bordercolor=BORDER_COLOR
+        )
+    )
+    return fig
+
+# ---------------------------
+# Header
+# ---------------------------
+st.title("📊 Insurance Cost Dashboard")
+st.caption("Análise interativa de custos médicos baseada em dados reais")
 
 # ---------------------------
 # KPIs
 # ---------------------------
 col1, col2, col3, col4 = st.columns(4)
 
-col1.metric("💰 Custo Médio", f"${df.charges.mean():,.0f}")
-col2.metric("📈 Custo Máximo", f"${df.charges.max():,.0f}")
-col3.metric("🚬 % Fumantes", f"{(df.smoker.eq('yes').mean()*100):.1f}%")
-col4.metric("👥 Registros", df.shape[0])
+with col1:
+    st.metric("👥 Total de Registros", len(df))
+
+with col2:
+    st.metric("💰 Custo Médio", f"${df['charges'].mean():,.2f}")
+
+with col3:
+    st.metric("🚬 % Fumantes", f"{(df['smoker'].value_counts(normalize=True)['yes']*100):.1f}%")
+
+with col4:
+    st.metric("📈 Custo Máximo", f"${df['charges'].max():,.2f}")
 
 st.divider()
 
 # ---------------------------
-# Gráfico principal
+# Gráficos principais
 # ---------------------------
-line = px.line(
-    df.sort_values("age"),
-    x="age",
-    y="charges",
-    color="smoker",
-    title="Charges por Idade",
-    template=PLOTLY_THEME
-)
-st.plotly_chart(line, use_container_width=True)
+col1, col2 = st.columns(2)
 
-# ---------------------------
-# Gráficos secundários
-# ---------------------------
-col_left, col_right = st.columns(2)
+with col1:
+    line = px.line(
+        df.sort_values("age"),
+        x="age",
+        y="charges",
+        color="smoker",
+        title="Evolução do custo por idade"
+    )
+    apply_plot_theme(line)
+    st.plotly_chart(line, use_container_width=True)
 
-with col_left:
+with col2:
     scatter = px.scatter(
         df,
         x="bmi",
         y="charges",
         color="smoker",
-        title="BMI vs Charges",
-        template=PLOTLY_THEME
+        title="IMC vs Custos Médicos",
+        opacity=0.7
     )
+    apply_plot_theme(scatter)
     st.plotly_chart(scatter, use_container_width=True)
 
-with col_right:
+# ---------------------------
+# Gráficos secundários
+# ---------------------------
+col1, col2, col3 = st.columns(3)
+
+with col1:
     donut = px.pie(
         df,
         names="smoker",
         hole=0.6,
-        title="Proporção de Fumantes",
-        template=PLOTLY_THEME
+        title="Distribuição de Fumantes"
     )
+    apply_plot_theme(donut)
     st.plotly_chart(donut, use_container_width=True)
 
-# ---------------------------
-# Bar chart
-# ---------------------------
-bar = px.bar(
-    df,
-    x="region",
-    y="charges",
-    color="region",
-    title="Custo Médio por Região",
-    template=PLOTLY_THEME
-)
-st.plotly_chart(bar, use_container_width=True)
+with col2:
+    bar = px.bar(
+        df.groupby("region", as_index=False)["charges"].mean(),
+        x="region",
+        y="charges",
+        title="Custo médio por região"
+    )
+    apply_plot_theme(bar)
+    st.plotly_chart(bar, use_container_width=True)
+
+with col3:
+    box = px.box(
+        df,
+        x="children",
+        y="charges",
+        title="Custos por número de filhos"
+    )
+    apply_plot_theme(box)
+    st.plotly_chart(box, use_container_width=True)
 
 # ---------------------------
-# Insights
+# Rodapé
 # ---------------------------
-st.subheader("🔍 Insights Principais")
-st.markdown("""
-- Fumantes apresentam custos significativamente maiores.
-- BMI elevado está fortemente associado a maiores charges.
-- A idade influencia progressivamente o valor do seguro.
-- A região tem impacto menor comparado a hábitos de saúde.
-""")
+st.markdown("---")
+st.caption("📌 Projeto educacional • Streamlit + Plotly • Deploy pronto para Render")
