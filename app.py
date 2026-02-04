@@ -12,21 +12,51 @@ st.set_page_config(
 )
 
 # ---------------------------
-# Estilo customizado (dark)
+# Sidebar - Tema
 # ---------------------------
-st.markdown("""
-<style>
-    .block-container {
-        padding-top: 2rem;
-    }
-    div[data-testid="metric-container"] {
-        background-color: #111827;
-        border-radius: 12px;
-        padding: 20px;
-        border: 1px solid #1f2937;
-    }
-</style>
-""", unsafe_allow_html=True)
+st.sidebar.title("⚙️ Configurações")
+
+theme = st.sidebar.radio(
+    "Tema",
+    ["🌙 Dark", "☀️ Light"],
+    horizontal=True
+)
+
+PLOTLY_THEME = "plotly_dark" if theme == "🌙 Dark" else "plotly_white"
+
+# ---------------------------
+# CSS dinâmico por tema
+# ---------------------------
+if theme == "🌙 Dark":
+    st.markdown("""
+    <style>
+        .stApp {
+            background-color: #0f172a;
+            color: #e5e7eb;
+        }
+        div[data-testid="metric-container"] {
+            background-color: #111827;
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid #1f2937;
+        }
+    </style>
+    """, unsafe_allow_html=True)
+else:
+    st.markdown("""
+    <style>
+        .stApp {
+            background-color: #f8fafc;
+            color: #0f172a;
+        }
+        div[data-testid="metric-container"] {
+            background-color: #ffffff;
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid #e5e7eb;
+        }
+    </style>
+    """, unsafe_allow_html=True)
 
 # ---------------------------
 # Carregamento dos dados
@@ -39,8 +69,9 @@ def load_data():
 df = load_data()
 
 # ---------------------------
-# Sidebar
+# Sidebar - Filtros
 # ---------------------------
+st.sidebar.divider()
 st.sidebar.title("🔎 Filtros")
 
 region = st.sidebar.multiselect(
@@ -64,7 +95,7 @@ df = df[
 # Título
 # ---------------------------
 st.title("💼 Medical Insurance Analytics")
-st.caption("Dashboard interativo inspirado em layouts SaaS modernos")
+st.caption("Dashboard interativo com alternância de tema (Dark / Light)")
 
 # ---------------------------
 # KPIs
@@ -79,7 +110,7 @@ col4.metric("👥 Registros", df.shape[0])
 st.divider()
 
 # ---------------------------
-# Linha principal (inspirado no layout)
+# Gráfico principal
 # ---------------------------
 line = px.line(
     df.sort_values("age"),
@@ -87,13 +118,12 @@ line = px.line(
     y="charges",
     color="smoker",
     title="Charges por Idade",
-    template="plotly_dark"
+    template=PLOTLY_THEME
 )
-
 st.plotly_chart(line, use_container_width=True)
 
 # ---------------------------
-# Gráficos inferiores
+# Gráficos secundários
 # ---------------------------
 col_left, col_right = st.columns(2)
 
@@ -104,7 +134,7 @@ with col_left:
         y="charges",
         color="smoker",
         title="BMI vs Charges",
-        template="plotly_dark"
+        template=PLOTLY_THEME
     )
     st.plotly_chart(scatter, use_container_width=True)
 
@@ -114,12 +144,12 @@ with col_right:
         names="smoker",
         hole=0.6,
         title="Proporção de Fumantes",
-        template="plotly_dark"
+        template=PLOTLY_THEME
     )
     st.plotly_chart(donut, use_container_width=True)
 
 # ---------------------------
-# Bar chart por região
+# Bar chart
 # ---------------------------
 bar = px.bar(
     df,
@@ -127,9 +157,8 @@ bar = px.bar(
     y="charges",
     color="region",
     title="Custo Médio por Região",
-    template="plotly_dark"
+    template=PLOTLY_THEME
 )
-
 st.plotly_chart(bar, use_container_width=True)
 
 # ---------------------------
@@ -137,8 +166,8 @@ st.plotly_chart(bar, use_container_width=True)
 # ---------------------------
 st.subheader("🔍 Insights Principais")
 st.markdown("""
-- Fumantes geram custos significativamente mais altos.
-- BMI elevado está fortemente correlacionado ao aumento dos charges.
-- A idade impacta o custo de forma progressiva.
-- A região tem impacto menor quando comparada a hábitos de saúde.
+- Fumantes apresentam custos significativamente maiores.
+- BMI elevado está fortemente associado a maiores charges.
+- A idade influencia progressivamente o valor do seguro.
+- A região tem impacto menor comparado a hábitos de saúde.
 """)
