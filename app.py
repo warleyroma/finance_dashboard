@@ -1,8 +1,6 @@
 import pandas as pd
 import streamlit as st
 import plotly.express as px
-import matplotlib
-matplotlib.use("Agg")
 
 # ---------------------------
 # Configuração inicial
@@ -97,6 +95,9 @@ def apply_plot_theme(fig):
 # ---------------------------
 st.title("📊 Insurance Cost Dashboard")
 st.caption("Análise interativa de custos médicos baseada em dados reais")
+
+st.success("Dados carregados com sucesso 🚀")
+st.write(df.head())
 
 # ---------------------------
 # KPIs
